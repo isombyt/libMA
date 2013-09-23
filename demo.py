@@ -48,7 +48,7 @@ def main():
                 rounds = (card_hp * 1.5 / atk) + 1
                 damage = 0
                 card_rounds = len([x for x in card_atk if x > 0])
-                for i in range(rounds):
+                for i in range(int(rounds)):
                     damage += card_atk[i%card_rounds]
                 if damage > hp and card_cost < ma.bc:
                     print 'changing roundtable(hp:%d damage:%d):' % (card_hp, damage)
