@@ -6,6 +6,7 @@ import urllib2
 import urllib
 import hashlib
 from Crypto.PublicKey import RSA
+from Crypto.Cipher import DES
 import binascii
 import json
 import string
@@ -13,9 +14,20 @@ import random
 import time
 
 
+DES_KEY = "w!o2a#r4e%g6i&n8(0)^_-==991000282"
+
+
 def sign(strs):
     data = ("".join(strs)+"meiyumaclientserver5185f24b570b8").lower()
     return hashlib.md5(data).hexdigest().upper()
+
+def des_encrypt(data, key=DES_KEY):
+    length = str(len(data))
+    head = ["","000","00","0"][len(length)] + length
+    plaintext = head + data
+    plaintext += "\x00" * (8 - (len(plaintext) % 8))
+    cipher = DES.new(key=key[:8], mode=DES.MODE_ECB)
+    return binascii.b2a_hex(cipher.encrypt(plaintext))
 
 def connect(url,params = None ,headers={}):
     if not "USer-Agent" in headers:
@@ -61,11 +73,8 @@ def gen_android_id(android_id = None):
     return rtn
 
 def autologin_receive(phone,android_id):
-    from woa_p import P
-    encoder = P("w!o2a#r4e%g6i&n8(0)^_-==991000282")
-    #msg = "WOSLAe75d9c6c6bc817db1375166498399Sx-0-991000282-1"
     url = "http://woa.sdo.com/woa/autologin/receiveVerificationSms.shtm?"
-    url += "phone=" + encoder.encode(phone, 0)
+    url += "phone=" + des_encrypt(phone)
     url += "&msg=" + "WOSL"+android_id+"-0-991000282-1"
     url += "&appid=991000282&areaid=1&clientversion=2.5.1&endpointos=android"
     data = connect(url)
@@ -73,23 +82,19 @@ def autologin_receive(phone,android_id):
     
 def verifyClientEx(smsCode, android_id):
     key = randomstr(8)
-    from woa_p import P
-    encoder = P(key)
     url = "http://woa.sdo.com/woa/autologin/verifyClientEx.shtm?"
     url += "signature=" + rsa(key)
     url += "&pubKeyVersion=1.0.1&uuid=" + android_id
-    url += "&smsCode=" + encoder.encode(smsCode)
+    url += "&smsCode=" + des_encrypt(smsCode, key)
     url += "&imei=&appid=991000282&areaid=1&clientversion=2.5.1&endpointos=android"
     data = connect(url)
     return data
     
 def checkwoasid(smsCode,android_id,phoneNum,guid,key):
-    from woa_p import P
-    encoder = P(key)
     data = {
         'areaId': '1',
         'optype': 0,
-        'uuid': encoder.encode(android_id+"|"+phoneNum),
+        'uuid': des_encrypt(android_id+"|"+phoneNum, key),
         'clientVersion': '2.5.1',
         'hasSDCard': 1,
         'endpointOS': 'android',
@@ -113,11 +118,3 @@ def smsVerify(phoneNum,android_id = None):
         data = checkwoasid(smsCode,android_id,phoneNum,guid,key)
         return data
     return callback
-
-if __name__ == "__main__":
-    phoneNum = "15815933930"
-    android_id = "e75d9c6c6bc817db"
-    callback = smsVerify(phoneNum)
-    smsCode = raw_input("please Enter smsCode:")
-    print smsCode
-    data = callback(smsCode)
